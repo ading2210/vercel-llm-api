@@ -29,6 +29,7 @@ setuptools.setup(
   include_package_data=True,
   install_requires=[
     "requests",
+    "chompjs"
   ],
   url="https://github.com/ading2210/poe-api"
 )
