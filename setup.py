@@ -29,7 +29,8 @@ setuptools.setup(
   include_package_data=True,
   install_requires=[
     "requests",
-    "chompjs"
+    "quickjs",
+    "tls-client"
   ],
   url="https://github.com/ading2210/poe-api"
 )
