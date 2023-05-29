@@ -1,8 +1,8 @@
 import vercel_ai
 import logging
-import json
+
+#list the available models
 
 vercel_ai.logger.setLevel(logging.INFO)
-
 client = vercel_ai.Client()
-print(json.dumps(client.models, indent=2))
+print(client.model_ids)

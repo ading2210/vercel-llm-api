@@ -29,6 +29,10 @@ class Client:
     self.session.headers.update(self.headers)
 
     self.models = self.get_models()
+    self.model_ids = list(self.models.keys())
+    self.model_defaults = {}
+    for model_id in self.models:
+      self.model_defaults[model_id] = self.get_default_params(model_id)
 
   def get_models(self):
     logger.info("Downloading homepage...")
@@ -106,16 +110,10 @@ class Client:
       "Sec-Fetch-Mode": "cors",
       "Sec-Fetch-Site": "same-origin",
     }}
-    '''
-    logger.info(f"Waiting for server response")
-    response = self.session.post(self.generate_url, json=payload, headers=headers)
-    output = ""
-    for line in response.text.split("\n"):
-      if line:
-        output += json.loads(line)
-    return output'''
 
     #bad streaming workaround cause the tls library doesn't support it
+    logger.info(f"Waiting for server response")
+
     chunks_queue = queue.Queue()
     error = None
     response = None
@@ -133,7 +131,7 @@ class Client:
     thread = threading.Thread(target=request_thread, daemon=True)
     thread.start()
     
-    line = ""
+    text = ""
     index = 0
     while True:
       try:
@@ -146,8 +144,8 @@ class Client:
         else:
           continue
 
-      line += chunk
-      lines = line.split("\n")
+      text += chunk
+      lines = text.split("\n")
 
       if len(lines) - 1 > index:
         new = lines[index:-1]
