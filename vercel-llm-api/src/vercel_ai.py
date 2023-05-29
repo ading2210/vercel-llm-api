@@ -4,7 +4,9 @@ import re
 import json
 import base64
 import quickjs
-import tls_client as requests
+import queue
+import threading
+from curl_cffi import requests
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -15,15 +17,14 @@ class Client:
   generate_url = base_url + "/api/generate"
 
   def __init__(self):
-    self.session = requests.Session(client_identifier="chrome_113")
+    self.session = requests.Session(impersonate="chrome104")
     self.headers = {
-      "Accept": "*/*",
-      "Accept-Language": "en-US,en;q=0.9,und;q=0.8,af;q=0.7",
-      "Sec-Ch-Ua": '"Google Chrome";v="113", "Chromium";v="113", "Not-A.Brand";v="24"',
-      "Sec-Ch-Ua-Mobile": "?0",
-      "Sec-Ch-Ua-Platform": '"Chrome OS"',
-      "Sec-Gpc": "1",
-      "User-Agent": "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Accept-Language": "en-US,en;q=0.5",
+      "Te": "trailers",
+      "Upgrade-Insecure-Requests": "1"
     }
     self.session.headers.update(self.headers)
 
@@ -78,7 +79,7 @@ class Client:
     return base64.b64encode(token_string).decode()
 
   def generate(self, prompt, **kwargs):
-    logger.info(f"Sending {prompt}")
+    logger.info(f"Sending prompt: {prompt}")
     token = self.get_token()
     payload = {
       "prompt": prompt,
@@ -101,20 +102,51 @@ class Client:
       "Sec-Fetch-Mode": "cors",
       "Sec-Fetch-Site": "same-origin",
     }}
-
+    '''
     logger.info(f"Waiting for server response")
     response = self.session.post(self.generate_url, json=payload, headers=headers)
-    
-    
     output = ""
     for line in response.text.split("\n"):
       if line:
         output += json.loads(line)
-    return output
+    return output'''
+
+    #bad streaming workaround cause the tls library doesn't support it
+    chunks_queue = queue.Queue()
+    error = None
+    response = None
+
+    def callback(data):
+      chunks_queue.put(data.decode())
+    def request_thread():
+      nonlocal response, error
+      try:
+        response = self.session.post(self.generate_url, json=payload, headers=headers, content_callback=callback)
+        response.raise_for_status()
+      except Exception as e:
+        error = e
     
-    """
-    response = self.session.post(self.generate_url, json=payload, headers=headers, stream=True)
+    thread = threading.Thread(target=request_thread, daemon=True)
+    thread.start()
     
-    for chunk in response.iter_content(chunk_size=None):
-      yield chunk
-      response.raise_for_status()"""
+    line = ""
+    index = 0
+    while True:
+      try:
+        chunk = chunks_queue.get(block=True, timeout=0.1)
+      except queue.Empty:
+        if error:
+          raise error
+        elif response:
+          break
+        else:
+          continue
+
+      line += chunk
+      lines = line.split("\n")
+
+      if len(lines) - 1 > index:
+        new = lines[index:-1]
+        for word in new:
+          yield json.loads(word)
+        index = len(lines) - 1

@@ -30,7 +30,7 @@ setuptools.setup(
   install_requires=[
     "requests",
     "quickjs",
-    "tls-client"
+    "curl_cffi"
   ],
   url="https://github.com/ading2210/poe-api"
 )
