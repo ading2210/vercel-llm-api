@@ -17,9 +17,9 @@ class Client:
   generate_url = base_url + "/api/generate"
 
   def __init__(self):
-    self.session = requests.Session(impersonate="chrome104")
+    self.session = requests.Session(impersonate="chrome110")
     self.headers = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
       "Accept-Encoding": "gzip, deflate, br",
       "Accept-Language": "en-US,en;q=0.5",
@@ -55,7 +55,8 @@ class Client:
         models_str = re.sub(stop_sequences_regex, re.escape('"\\n\\nHuman:"'), models_str)
 
         context = quickjs.Context()
-        return context.eval(f"({models_str})").json()
+        json_str = context.eval(f"({models_str})").json()
+        return json.loads(json_str)
     
     return []
 
@@ -78,20 +79,23 @@ class Client:
     token_string = json.dumps(token, separators=(',', ':')).encode()
     return base64.b64encode(token_string).decode()
 
-  def generate(self, prompt, **kwargs):
-    logger.info(f"Sending prompt: {prompt}")
+  def get_default_params(self, model_id):
+    model = self.models[model_id]
+    defaults = {}
+    for key, param in model["parameters"].items():
+      defaults[key] = param["value"]
+    return defaults
+
+  def generate(self, model_id, prompt, params={}):
+    logger.info(f"Sending to {model_id}: {prompt}")
+
     token = self.get_token()
-    payload = {
+    defaults = self.get_default_params(model_id)
+    payload = {**defaults, **params, **{
       "prompt": prompt,
-      "model": "openai:gpt-3.5-turbo",
-      "temperature": 0.7,
-      "maxTokens": 200,
-      "topK": 1,
-      "topP": 1,
-      "frequencyPenalty": 1,
-      "presencePenalty": 1,
-      "stopSequences": []
-    }
+      "model": model_id,
+    }}
+
     headers = {**self.headers, **{
       "Accept-Encoding": "gzip, deflate, br",
       "Custom-Encoding": token,
