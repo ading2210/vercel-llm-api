@@ -9,7 +9,7 @@ long_description = (base_path / "README.md").read_text()
 
 setuptools.setup(
   name="vercel-llm-api",
-  version="0.0.1",
+  version="0.1.0",
   author="ading2210",
   license="GPLv3",
   description="A reverse engineered API for the Vercel AI playground.",
@@ -32,5 +32,5 @@ setuptools.setup(
     "quickjs",
     "curl_cffi"
   ],
-  url="https://github.com/ading2210/poe-api"
+  url="https://github.com/ading2210/vercel-llm-api"
 )
