@@ -6,6 +6,7 @@ import base64
 import quickjs
 import queue
 import threading
+import uuid
 from curl_cffi import requests
 
 logging.basicConfig()
@@ -117,17 +118,16 @@ class Client:
       try:
         response = self.session.post(*args, **kwargs, content_callback=callback)
         response.raise_for_status()
+        print(response.headers)
       except Exception as e:
         error = e
     
     thread = threading.Thread(target=request_thread, daemon=True)
     thread.start()
     
-    text = ""
-    index = 0
     while True:
       try:
-        chunk = chunks_queue.get(block=True, timeout=0.1)
+        chunk = chunks_queue.get(block=True, timeout=0.01)
       except queue.Empty:
         if error:
           raise error
@@ -135,25 +135,11 @@ class Client:
           break
         else:
           continue
-
-      text += chunk
-      lines = text.split("\n")
-
-      if len(lines) - 1 > index:
-        new = lines[index:-1]
-        for word in new:
-          yield json.loads(word)
-        index = len(lines) - 1
-
-  def generate(self, model_id, prompt, params={}):
-    logger.info(f"Sending to {model_id}: {prompt}")
-
+      
+      yield chunk
+  
+  def get_headers(self):
     token = self.get_token()
-    defaults = self.get_default_params(model_id)
-    payload = {**defaults, **params, **{
-      "prompt": prompt,
-      "model": model_id,
-    }}
 
     headers = {**self.headers, **{
       "Accept-Encoding": "gzip, deflate, br",
@@ -166,6 +152,42 @@ class Client:
       "Sec-Fetch-Site": "same-origin",
     }}
 
-    logger.info(f"Waiting for server response")
-    return self.stream_request(self.session.post, self.generate_url, headers=headers, json=payload)
+    return headers
+
+  def generate(self, model_id, prompt, params={}):
+    logger.info(f"Sending to {model_id}: {prompt}")
+
+    defaults = self.get_default_params(model_id)
+    payload = {**defaults, **params, **{
+      "prompt": prompt,
+      "model": model_id,
+    }}
+    headers = self.get_headers()
+
+    logger.info("Waiting for response")
+    text = ""
+    index = 0
+    for chunk in self.stream_request(self.session.post, self.generate_url, headers=headers, json=payload):
+      text += chunk
+      lines = text.split("\n")
+
+      if len(lines) - 1 > index:
+        new = lines[index:-1]
+        for word in new:
+          yield json.loads(word)
+        index = len(lines) - 1
+  
+  def chat(self, model_id, messages, params={}):
+    logger.info(f"Sending to {model_id}: {len(messages)} messages")
+
+    defaults = self.get_default_params(model_id)
+    payload = {**defaults, **params, **{
+      "chatIndex": 0, 
+      "messages": messages,
+      "model": model_id,
+      "playgroundId": str(uuid.uuid4())
+    }}
+    headers = self.get_headers()
     
+    logger.info("Waiting for response")
+    return self.stream_request(self.session.post, self.chat_url, headers=headers, json=payload)
