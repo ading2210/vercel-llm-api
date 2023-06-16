@@ -7,18 +7,10 @@ vercel_ai.logger.setLevel(logging.INFO)
 client = vercel_ai.Client()
 
 messages = [
-  {
-    "content": f"test {random.randint(0, 1000)}",
-    "role": "user"
-  },
-  {
-    "content": "This is a test response from an AI language model. How may I assist you today?",
-    "role": "assistant"
-  },
-  {
-    "content": "summarize the gnu gpl v3",
-    "role": "user"
-  }
+  {"role": "system", "content": "You are a helpful assistant."},
+  {"role": "user", "content": "Who won the world series in 2020?"},
+  {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
+  {"role": "user", "content": "Where was it played?"}
 ]
 params = {
   "maxTokens": 600

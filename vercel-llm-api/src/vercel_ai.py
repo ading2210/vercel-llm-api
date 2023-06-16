@@ -7,6 +7,7 @@ import quickjs
 import queue
 import threading
 import uuid
+import random
 from curl_cffi import requests
 
 logging.basicConfig()
@@ -19,9 +20,9 @@ class Client:
   chat_url = base_url + "/api/generate"
 
   def __init__(self):
-    self.session = requests.Session(impersonate="chrome110")
+    self.session = requests.Session(impersonate="chrome107")
     self.headers = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110 Safari/537.36",
+      "User-Agent": f"Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.{random.randint(0,9999)}.{random.randint(0,99)} Safari/537.36",
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
       "Accept-Encoding": "gzip, deflate, br",
       "Accept-Language": "en-US,en;q=0.5",
@@ -118,7 +119,6 @@ class Client:
       try:
         response = self.session.post(*args, **kwargs, content_callback=callback)
         response.raise_for_status()
-        print(response.headers)
       except Exception as e:
         error = e
     
