@@ -14,7 +14,7 @@ logger = logging.getLogger()
 class Client:
   base_url = "https://play.vercel.ai"
   token_url = base_url + "/openai.jpeg" #nice try vercel
-  generate_url = base_url + "/api/generate"
+  generate_url = base_url + "/api/prompt"
 
   def __init__(self):
     self.session = requests.Session(impersonate="chrome110")
