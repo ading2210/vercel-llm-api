@@ -15,6 +15,7 @@ class Client:
   base_url = "https://play.vercel.ai"
   token_url = base_url + "/openai.jpeg" #nice try vercel
   generate_url = base_url + "/api/prompt"
+  chat_url = base_url + "/api/generate"
 
   def __init__(self):
     self.session = requests.Session(impersonate="chrome110")
@@ -45,11 +46,24 @@ class Client:
       paths[i] = re.sub(separator_regex, "", paths[i])
     paths = list(set(paths))
 
-    for path in paths:
-      script_url = f"{self.base_url}/_next/{path}"
-      logger.info(f"Downloading and parsing {script_url}...")
+    scripts = []
+    threads = []
 
+    logger.info(f"Downloading and parsing scripts...")
+    def download_thread(path):
+      script_url = f"{self.base_url}/_next/{path}"
       script = self.session.get(script_url).text
+      scripts.append(script)
+      
+    for path in paths:
+      thread = threading.Thread(target=download_thread, args=(path,), daemon=True)
+      thread.start()
+      threads.append(thread)
+    
+    for thread in threads:
+      thread.join()
+    
+    for script in scripts:
       models_regex = r'let .="\\n\\nHuman:\",r=(.+?),.='
       matches = re.findall(models_regex, script)
 
@@ -61,7 +75,7 @@ class Client:
         context = quickjs.Context()
         json_str = context.eval(f"({models_str})").json()
         return json.loads(json_str)
-    
+
     return []
 
   def get_token(self):
@@ -90,30 +104,8 @@ class Client:
       defaults[key] = param["value"]
     return defaults
 
-  def generate(self, model_id, prompt, params={}):
-    logger.info(f"Sending to {model_id}: {prompt}")
-
-    token = self.get_token()
-    defaults = self.get_default_params(model_id)
-    payload = {**defaults, **params, **{
-      "prompt": prompt,
-      "model": model_id,
-    }}
-
-    headers = {**self.headers, **{
-      "Accept-Encoding": "gzip, deflate, br",
-      "Custom-Encoding": token,
-      "Host": "play.vercel.ai",
-      "Origin": "https://play.vercel.ai",
-      "Referrer": "https://play.vercel.ai",
-      "Sec-Fetch-Dest": "empty",
-      "Sec-Fetch-Mode": "cors",
-      "Sec-Fetch-Site": "same-origin",
-    }}
-
-    #bad streaming workaround cause the tls library doesn't support it
-    logger.info(f"Waiting for server response")
-
+  #bad streaming workaround cause the tls library doesn't support it
+  def stream_request(self, method, *args, **kwargs):
     chunks_queue = queue.Queue()
     error = None
     response = None
@@ -123,7 +115,7 @@ class Client:
     def request_thread():
       nonlocal response, error
       try:
-        response = self.session.post(self.generate_url, json=payload, headers=headers, content_callback=callback)
+        response = self.session.post(*args, **kwargs, content_callback=callback)
         response.raise_for_status()
       except Exception as e:
         error = e
@@ -152,3 +144,28 @@ class Client:
         for word in new:
           yield json.loads(word)
         index = len(lines) - 1
+
+  def generate(self, model_id, prompt, params={}):
+    logger.info(f"Sending to {model_id}: {prompt}")
+
+    token = self.get_token()
+    defaults = self.get_default_params(model_id)
+    payload = {**defaults, **params, **{
+      "prompt": prompt,
+      "model": model_id,
+    }}
+
+    headers = {**self.headers, **{
+      "Accept-Encoding": "gzip, deflate, br",
+      "Custom-Encoding": token,
+      "Host": "play.vercel.ai",
+      "Origin": "https://play.vercel.ai",
+      "Referrer": "https://play.vercel.ai",
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "same-origin",
+    }}
+
+    logger.info(f"Waiting for server response")
+    return self.stream_request(self.session.post, self.generate_url, headers=headers, json=payload)
+    
