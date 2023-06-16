@@ -12,6 +12,7 @@ This is a reverse engineered API wrapper for the [Vercel AI Playground](https://
   * [Using the Client](#using-the-client)
     + [Downloading the Available Models](#downloading-the-available-models)
     + [Generating Text](#generating-text)
+    + [Generating Chat Messages](#generating-chat-messages)
   * [Misc](#misc)
     + [Changing the Logging Level](#changing-the-logging-level)
 - [Copyright](#copyright)
@@ -22,6 +23,7 @@ This is a reverse engineered API wrapper for the [Vercel AI Playground](https://
 ## Features:
  - Download the available models
  - Generate text
+ - Generate chat messages
  - Set custom parameters
  - Stream the responses
 
@@ -144,6 +146,26 @@ result = ""
 for chunk in client.generate("openai:gpt-3.5-turbo", "Summarize the GNU GPL v3"):
   result += chunk
 print(result)
+```
+
+#### Generating Chat Messages:
+To generate chat messages, use the `client.chat` function, which accepts the following arguments:
+ - `model` - The ID of the model you want to use.
+ - `messages` - A list of messages. The format for this is identical to how you would use the official OpenAI API.
+ - `params = {}` - A dict of optional parameters. See the "Downloading the Available Models" section for how to find these.
+
+The function is a generator which returns the newly generated text as a string.
+
+```python
+messages = [
+  {"role": "system", "content": "You are a helpful assistant."},
+  {"role": "user", "content": "Who won the world series in 2020?"},
+  {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
+  {"role": "user", "content": "Where was it played?"}
+]
+for chunk in client.chat("openai:gpt-3.5-turbo", messages):
+  print(chunk, end="", flush=True)
+print()
 ```
 
 ### Misc:
