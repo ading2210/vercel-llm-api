@@ -9,7 +9,7 @@ long_description = (base_path / "README.md").read_text()
 
 setuptools.setup(
   name="vercel-llm-api",
-  version="0.2.0",
+  version="0.2.1",
   author="ading2210",
   license="GPLv3",
   description="A reverse engineered API for the Vercel AI playground.",

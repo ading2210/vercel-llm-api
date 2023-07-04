@@ -14,7 +14,7 @@ logging.basicConfig()
 logger = logging.getLogger()
 
 class Client:
-  base_url = "https://play.vercel.ai"
+  base_url = "https://sdk.vercel.ai"
   token_url = base_url + "/openai.jpeg" #nice try vercel
   generate_url = base_url + "/api/prompt"
   chat_url = base_url + "/api/generate"
@@ -144,9 +144,9 @@ class Client:
     headers = {**self.headers, **{
       "Accept-Encoding": "gzip, deflate, br",
       "Custom-Encoding": token,
-      "Host": "play.vercel.ai",
-      "Origin": "https://play.vercel.ai",
-      "Referrer": "https://play.vercel.ai",
+      "Host": "sdk.vercel.ai",
+      "Origin": "https://sdk.vercel.ai",
+      "Referrer": "https://sdk.vercel.ai",
       "Sec-Fetch-Dest": "empty",
       "Sec-Fetch-Mode": "cors",
       "Sec-Fetch-Site": "same-origin",
