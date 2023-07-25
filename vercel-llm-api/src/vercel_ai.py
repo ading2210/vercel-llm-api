@@ -22,7 +22,7 @@ class Client:
   def __init__(self):
     self.session = requests.Session(impersonate="chrome107")
     self.headers = {
-      "User-Agent": f"Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.{random.randint(0,9999)}.{random.randint(0,99)} Safari/537.36",
+      "User-Agent": "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.{rand1}.{rand2} Safari/537.36",
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
       "Accept-Encoding": "gzip, deflate, br",
       "Accept-Language": "en-US,en;q=0.5",
@@ -36,7 +36,7 @@ class Client:
     self.model_defaults = {}
     for model_id in self.models:
       self.model_defaults[model_id] = self.get_default_params(model_id)
-
+  
   def get_models(self):
     logger.info("Downloading homepage...")
     html = self.session.get(self.base_url).text
@@ -142,6 +142,10 @@ class Client:
     token = self.get_token()
 
     headers = {**self.headers, **{
+      "User-Agent": self.headers["User-Agent"].format(
+        rand1=random.randint(0,9999),
+        rand2=random.randint(0,9999)
+      ),
       "Accept-Encoding": "gzip, deflate, br",
       "Custom-Encoding": token,
       "Host": "sdk.vercel.ai",
