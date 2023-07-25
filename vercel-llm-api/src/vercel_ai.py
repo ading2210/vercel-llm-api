@@ -201,4 +201,5 @@ class Client:
     headers = self.get_headers()
     
     logger.info("Waiting for response")
-    return self.stream_request(self.session.post, self.chat_url, headers=headers, json=payload)
+    for chunk in self.stream_request(self.session.post, self.chat_url, headers=headers, json=payload):
+      yield chunk
