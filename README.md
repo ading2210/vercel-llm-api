@@ -30,7 +30,6 @@ This is a reverse engineered API wrapper for the [Vercel AI Playground](https://
 ## Limitations:
  - User-agent is hardcoded
  - No auth support
- - No proxy support
  - Can't use "pro" or "hobby" models
 
 ## Installation:
@@ -46,11 +45,20 @@ python3 examples/generate.py
 ```
 
 ### Using the Client:
-To use this library, simply import `vercel_ai` and create a `vercel_ai.Client` instance. This class does not take any arguments.
+To use this library, simply import `vercel_ai` and create a `vercel_ai.Client` instance. You can specify a proxy using the `proxy` keyword argument.
+
+Normal example:
 ```python
 import vercel_ai
 client = vercel_ai.Client()
 ```
+
+Proxied example:
+```python
+import vercel_ai
+client = vercel_ai.Client(proxy="socks5h://193.29.62.48:11003")
+```
+
 Note that the following examples assume `client` is the name of your `vercel_ai.Client` instance.
 
 #### Downloading the Available Models:

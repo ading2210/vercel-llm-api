@@ -19,7 +19,7 @@ class Client:
   generate_url = base_url + "/api/prompt"
   chat_url = base_url + "/api/generate"
 
-  def __init__(self):
+  def __init__(self, proxy=None):
     self.session = requests.Session(impersonate="chrome107")
     self.headers = {
       "User-Agent": "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.{rand1}.{rand2} Safari/537.36",
@@ -30,6 +30,13 @@ class Client:
       "Upgrade-Insecure-Requests": "1"
     }
     self.session.headers.update(self.headers)
+
+    self.proxy = proxy
+    if self.proxy:       
+      self.session.proxies = {
+        "http": self.proxy,
+        "https": self.proxy
+      }
 
     self.models = self.get_models()
     self.model_ids = list(self.models.keys())
