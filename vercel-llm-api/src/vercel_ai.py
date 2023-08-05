@@ -8,6 +8,7 @@ import queue
 import threading
 import uuid
 import random
+import struct
 from curl_cffi import requests
 
 logging.basicConfig()
@@ -73,7 +74,7 @@ class Client:
       thread.join()
     
     for script in scripts:
-      models_regex = r'let .="\\n\\nHuman:\",r=(.+?),.='
+      models_regex = r'let .="\\n\\nHuman:\",.=(.+?),.='
       matches = re.findall(models_regex, script)
 
       if matches:
@@ -90,21 +91,24 @@ class Client:
   def get_token(self):
     logger.info("Fetching token from "+self.token_url)
     b64 = self.session.get(self.token_url).text
-    data = json.loads(base64.b64decode(b64))
+    data = json.loads(base64.b64decode(b64, validate=True))
 
     script = """
-      var globalThis = {{data: "sentinel"}};
+      String.prototype.fontcolor = function() {{
+        return `<font>${{this}}</font>`
+      }}
+      var globalThis = {{marker: "mark"}};
       ({script})({key})
     """.format(script=data["c"], key=data["a"])
-    
     context = quickjs.Context()
     token_data = json.loads(context.eval(script).json())
+    token_data[2] = "mark"
     token = {
       "r": token_data,
       "t": data["t"]
     }
-    token_string = json.dumps(token, separators=(',', ':')).encode()
-    return base64.b64encode(token_string).decode()
+    token_str = json.dumps(token, separators=(',', ':')).encode("utf-16le")
+    return base64.b64encode(token_str).decode()
 
   def get_default_params(self, model_id):
     model = self.models[model_id]
