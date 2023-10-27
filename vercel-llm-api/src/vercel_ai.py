@@ -9,6 +9,7 @@ import threading
 import uuid
 import random
 import struct
+from proxy import proxy
 from curl_cffi import requests
 
 logging.basicConfig()
@@ -22,6 +23,10 @@ class Client:
 
   def __init__(self, proxy=None):
     self.session = requests.Session(impersonate="chrome107")
+
+    if proxy:
+      self.change_proxy()
+
     self.headers = {
       "User-Agent": "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.{rand1}.{rand2} Safari/537.36",
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
@@ -32,19 +37,17 @@ class Client:
     }
     self.session.headers.update(self.headers)
 
-    self.proxy = proxy
-    if self.proxy:       
-      self.session.proxies = {
-        "http": self.proxy,
-        "https": self.proxy
-      }
-
     self.models = self.get_models()
     self.model_ids = list(self.models.keys())
     self.model_defaults = {}
     for model_id in self.models:
       self.model_defaults[model_id] = self.get_default_params(model_id)
   
+  def change_proxy(self):
+    proxy_address = proxy.get_random_proxy()
+    self.session.proxies = {"http": proxy_address, "https": None}
+    self.session.headers.update({ "X-Forwarded-For": re.search(r"(\d+\.\d+\.\d+\.\d+)", proxy_address).group(1) })
+
   def get_models(self):
     logger.info("Downloading homepage...")
     html = self.session.get(self.base_url).text
@@ -148,6 +151,25 @@ class Client:
           continue
       
       yield chunk
+
+  def request_sync(self, method, *args, **kwargs):
+    got_response = False
+    max_retries = 5
+    while not got_response:
+      try:
+        response = self.session.post(*args, **kwargs)
+        response.raise_for_status()
+        got_response = True
+      except requests.RequestsError as e:
+        logger.info(e.args[0])
+        if '500' in e.args[0]:
+          logger.info(f"Changing proxy to {self.session.proxies['http']}")
+          self.change_proxy()
+          max_retries -= 1
+          if max_retries == 0:
+            raise RuntimeError('Max retries reached')
+        elif "405" in e.args[0]:
+          raise Exception("The model's down, try later")
   
   def get_headers(self):
     token = self.get_token()
@@ -191,6 +213,25 @@ class Client:
         for word in new:
           yield json.loads(word)
         index = len(lines) - 1
+
+  def generate_sync(self, model_id: str, prompt: str, params={}):
+        logger.info(f"Sending to {model_id}: {prompt[:100]}")
+
+        defaults = self.get_default_params(model_id)
+        payload = {
+            **defaults,
+            **params,
+            **{
+                "prompt": prompt,
+                "model": model_id,
+            },
+        }
+        headers = self.get_headers()
+
+        logger.info("Waiting for response")
+        return self.request_wrapped(
+            self.session.post, self.generate_url, headers=headers, json=payload
+        )
   
   def chat(self, model_id, messages, params={}):
     logger.info(f"Sending to {model_id}: {len(messages)} messages")
@@ -206,3 +247,15 @@ class Client:
     
     logger.info("Waiting for response")
     return self.stream_request(self.session.post, self.chat_url, headers=headers, json=payload)
+  
+  
+
+client = Client(proxy=True)
+
+prompt = "What is git?" + " "*random.randint(0, 200)
+params = {
+  "maximumLength": 1000
+}
+
+response = client.generate_sync("openai:gpt-3.5-turbo", prompt, params=params)
+print(response.text)

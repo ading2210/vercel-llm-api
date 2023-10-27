@@ -28,6 +28,7 @@ setuptools.setup(
   py_modules=["vercel_ai"],
   include_package_data=True,
   install_requires=[
+    "requests",
     "quickjs",
     "curl_cffi"
   ],
